@@ -1,22 +1,24 @@
 #include "login.h"
 
-login::login(QWidget *parent)
+Login::Login(QWidget *parent)
     : QDialog(parent)
 {
+    tcpSocket = new QTcpSocket(this);
+    tcpSocket->connectToHost(QHostAddress(SERVER_IP),SERVER_PORT);
+    connect(this->tcpSocket,SIGNAL(readyRead()),this,SLOT(recvMessage()));
+
+
+
     int width = 450;
     int height = 300;
     this->setFixedSize(width,height);
 
-    setWindowTitle(tr("欢迎来到 BibiWorld"));
+    setWindowTitle(tr("欢迎来到 bibiWorld"));
 
     pic = new QLabel;
-   /* QPixmap icon("1.png");
-    pic->setPixmap(icon);
-    pic->resize(450,150);*/
-
-    pic->setStyleSheet("background-image:url(/home/lihy45/Qt5.2.0/lhysource/bibiworld_NoUi/1.jpg)");
-    //We can not use this path to find path of the picture. We need to try another way to find path.
-    pic->resize(450,1500);
+    /*pic->setPixmap(":/images/1.jpg");
+    pic->resize(450,1500);*/
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     userNameLabel = new QLabel;
     userNameLabel->setText(tr("用户名："));
@@ -36,8 +38,8 @@ login::login(QWidget *parent)
     exitoutButton->setText(tr("退出"));
     forgetPasswordButton = new QPushButton;
     forgetPasswordButton->setText(tr("忘记密码？"));
-    helpButton = new QPushButton;
-    helpButton->setText(tr("帮助"));
+    registerButton = new QPushButton;
+    registerButton->setText(tr("注册"));
 
     upLayout = new QGridLayout();
     upLayout->addWidget(pic,0,0,1,5);
@@ -48,7 +50,7 @@ login::login(QWidget *parent)
     // upLayout->addWidget(logintoButton,4,0);
     //upLayout->addWidget(exitoutButton,4,1);
     upLayout->addWidget(forgetPasswordButton,2,2);
-    upLayout->addWidget(helpButton,3,2);
+    upLayout->addWidget(registerButton,3,2);
     upLayout->addWidget(remberPassword,5,0);
     upLayout->addWidget(autoLogin,5,1);
 
@@ -69,29 +71,75 @@ login::login(QWidget *parent)
     connect(logintoButton,SIGNAL(clicked()),this,SLOT(loginto()));
     connect(exitoutButton,SIGNAL(clicked()),this,SLOT(exitout()));
     connect(forgetPasswordButton,SIGNAL(clicked()),this,SLOT(forgetPassword()));
-    connect(helpButton,SIGNAL(clicked()),this,SLOT(help()));
+    connect(registerButton,SIGNAL(clicked()),this,SLOT(toRegister()));
 
 
 }
 
-login::~login()
+Login::~Login()
 {
 
 }
 
-void login::loginto(){
-
+void Login::loginto(){
+    QString tmpname = userNameEdit->text();
+    QString tmppassword = userPasswordEdit->text();
+    QString info = "BIBI_login((" + tmpname + ")(" + tmppassword + "))";
+    sendMessage(info);
+    state = LOGIN;
 }
-void login::exitout(){
+void Login::exitout(){
     close();
 }
 
-void login::forgetPassword(){
+void Login::forgetPassword(){
 
 }
 
-void login::help(){
+void Login::toRegister(){
+    QString tmpname = userNameEdit->text();
+    QString tmppassword = userPasswordEdit->text();
+    QString info = "BIBI_register((" + tmpname + ")(" + tmppassword + "))";
+    sendMessage(info);
+    state = REGISTER;
+    //qDebug() << info;
+}
 
+void Login::sendMessage(QString info){
+    QByteArray *array =new QByteArray;
+    array->clear();
+    array->append(info);
+    tcpSocket->write(array->data());
+
+}
+void Login::recvMessage(){
+    QString info;
+    info = this->tcpSocket->readAll();
+    qDebug() << info;
+    if(state==REGISTER){
+        if(info=="BIBI_register((1))"){
+            QMessageBox::information(this,tr("register"),tr("successfully registered!"));
+        }
+        else if(info=="BIBI_register((0))"){
+            QMessageBox::information(this,tr("register"),tr("registered failed!"));
+        }
+        else
+            qDebug() << "error";
+    }
+
+    if(state==LOGIN){
+        if(info=="BIBI_login((1)(1))"){
+            qDebug() << "login successful";
+        }
+        else if(info=="BIBI_login((1)(0))"){
+            QMessageBox::information(this,tr("login"),tr("password error!"));
+        }
+        else if(info=="BIBI_login((0)(0))"){
+            QMessageBox::information(this,tr("login"),tr("No username"));
+        }
+        else
+            qDebug() << "login error";
+    }
 }
 
 
